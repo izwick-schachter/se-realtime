@@ -5,13 +5,54 @@ module SE
   module Realtime
     class << self
       def on_post(&handler)
-        WSClient.new("https://qa.sockets.stackexchange.com", cookies) do |e|
+        ws do |e|
           data = JSON.parse e['data']
           handler.call(data)
         end
       end
 
+      def json(&handler)
+        ws do |e|
+          e['data'] = clean_keys(JSON.parse(e['data']))
+          handler.call(e)
+        end
+      end
+
+      def batch(size, &handler)
+        posts = []
+        json do |e|
+          posts << e
+          if posts.length >= size
+            handler(posts)
+            posts = []
+          end
+        end
+      end
+
+      def ws(&block)
+        WSClient.new("https://qa.sockets.stackexchange.com", cookies, &block)
+      end
+
       private
+
+      def clean_keys(json)
+        {
+          'apiSiteParameter' => :site,
+          'titleEncodedFancy' => :title,
+          'bodySummary' => :body,
+          'lastActivityDate' => :last_active,
+          'siteBaseHostAddress' => :site_url
+        }.each do |old_key, new_key|
+          json[new_key] = json.delete(old_key) if json.key?(old_key)
+        end
+        json.map do |k,v|
+          if k.is_a? String
+            [k.gsub(/([a-z\d])([A-Z])/,'\1_\2').downcase.to_sym,v]
+          else
+            [k.to_sym,v]
+          end
+        end.to_h
+      end
 
       def cookies
         agent = Mechanize.new
