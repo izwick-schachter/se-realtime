@@ -11,16 +11,16 @@ module SE
         end
       end
 
-      def json(&handler)
+      def json(site: nil, &handler)
         ws do |e|
           e['data'] = clean_keys(JSON.parse(e['data']))
-          handler.call(e)
+          handler.call(e) if e[:site] == site || site.nil?
         end
       end
 
-      def batch(size, &handler)
+      def batch(size, **opts, &handler)
         posts = []
-        json do |e|
+        json(**opts) do |e|
           posts << e
           if posts.length >= size
             handler(posts)
