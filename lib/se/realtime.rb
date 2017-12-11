@@ -23,7 +23,7 @@ module SE
         json(**opts) do |e|
           posts << e
           if posts.length >= size
-            handler(posts)
+            handler.call(posts)
             posts = []
           end
         end
