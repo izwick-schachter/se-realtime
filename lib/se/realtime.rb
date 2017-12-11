@@ -13,8 +13,8 @@ module SE
 
       def json(site: nil, &handler)
         ws do |e|
-          e['data'] = clean_keys(JSON.parse(e['data']))
-          handler.call(e) if e[:site] == site || site.nil?
+          data = clean_keys(JSON.parse(e['data']))
+          handler.call(data) if data[:site] == site || site.nil?
         end
       end
 
