@@ -30,7 +30,12 @@ module SE
         end
 
         @driver.on :message do |e|
-          @handler.call(JSON.parse(e.data))
+          data = JSON.parse(e.data)
+          if data["action"] == "hb"
+            send "hb"
+          else
+            @handler.call(data)
+          end
         end
 
         @driver.on :close, ->(_e) { puts "WebSocket is closed!"}
@@ -57,6 +62,7 @@ module SE
       end
 
       def send(message)
+        puts "BLURGLED" if message == "hb"
         @driver.text(message)
       end
 
