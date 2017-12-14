@@ -17,6 +17,7 @@ module SE
         @driver = WebSocket::Driver.client(self)
         @socket = TCPSocket.new(@uri.host, 80)
         @handler = handler
+        @logger = Logger.new "realtime-#{DateTime.now.strftime('%Q')}.log"
 
         @driver.add_extension PermessageDeflate
         @driver.set_header "Cookies", cookies if cookies
@@ -30,6 +31,7 @@ module SE
         end
 
         @driver.on :message do |e|
+          @logger.info("Read:  #{e.data}")
           data = JSON.parse(e.data)
           if data["action"] == "hb"
             send "hb"
@@ -62,7 +64,8 @@ module SE
       end
 
       def send(message)
-        puts "BLURGLED" if message == "hb"
+        puts "Lub dub" if message == "hb"
+        @logger.info("Wrote: #{message}")
         @driver.text(message)
       end
 
