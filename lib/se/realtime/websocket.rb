@@ -17,7 +17,8 @@ module SE
         @driver = WebSocket::Driver.client(self)
         @socket = TCPSocket.new(@uri.host, 80)
         @handler = handler
-        @logger = Logger.new "realtime-#{DateTime.now.strftime('%Q')}.log"
+        @logger = Logger.new "realtime.log"
+        @restart = true
 
         @driver.add_extension PermessageDeflate
         @driver.set_header "Cookies", cookies if cookies
@@ -27,7 +28,7 @@ module SE
 
         @driver.on :open, ->(_e) do
           send "155-questions-active"
-          puts "WebSocket is open!"
+          @logger.info "WebSocket is open!"
         end
 
         @driver.on :message do |e|
@@ -40,14 +41,21 @@ module SE
           end
         end
 
-        @driver.on :close, ->(_e) { puts "WebSocket is closed!"}
+        @driver.on :close, ->(_e) do
+          @logger.info "Realtime WebSocket is closing."
+          if @restart
+            @logger.info "Attempting to reopen websocket..."
+            @driver.start
+          end
+        end
 
-        @driver.on :error, ->(e) { STDERR.puts e }
+        @driver.on :error, ->(e) { @logger.error e }
 
         @driver.start
 
         @thread = Thread.new do
           trap("SIGINT") do
+            @restart = false
             close
             Thread.exit
           end
@@ -55,7 +63,7 @@ module SE
             begin
               @driver.parse(@socket.recv(1))
             rescue IOError, SystemCallError => e
-              puts "Recieved #{e} closing TCP socket. You shouldn't be worried :)"
+              @logger.warn "Recieved #{e} closing TCP socket. You shouldn't be worried :)"
             end
           end
         end
@@ -64,7 +72,7 @@ module SE
       end
 
       def send(message)
-        puts "Lub dub" if message == "hb"
+        @logger.info "Lub dub" if message == "hb"
         @logger.info("Wrote: #{message}")
         @driver.text(message)
       end
@@ -77,7 +85,7 @@ module SE
         @driver.close
         @socket.shutdown
       rescue IOError, Errno::ENOTCONN => e
-        STDERR.puts "Recieved #{e.class} trying to close websocket. Ignoring..."
+        @logger.error "Recieved #{e.class} trying to close websocket. Ignoring..."
       end
     end
   end
