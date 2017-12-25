@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    se-realtime (0.0.0.beta0)
+    se-realtime (0.0.0.beta1)
       mechanize (~> 2.7)
       nokogiri (~> 1.8)
       permessage_deflate (~> 0.1)
@@ -53,4 +53,4 @@ DEPENDENCIES
   se-realtime!
 
 BUNDLED WITH
-   1.16.0
+   1.16.1
