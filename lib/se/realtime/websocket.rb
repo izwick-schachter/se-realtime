@@ -15,7 +15,7 @@ module SE
         @uri = URI.parse(url)
         @url = "ws#{@uri.scheme.split("")[4]}://#{@uri.host}"
         @driver = WebSocket::Driver.client(self)
-        @socket = TCPSocket.new(@uri.host, 80)
+        @socket = TCPSocket.new(@uri.host, @uri.scheme.split("")[4] == 's' ? 443 : 80)
         @handler = handler
         @logger = Logger.new "realtime.log"
         @restart = true
