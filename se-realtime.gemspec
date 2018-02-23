@@ -38,6 +38,7 @@ Gem::Specification.new do |spec|
     ["nokogiri",           "~> 1.8"],
     ["permessage_deflate", "~> 0.1"],
     ["websocket-driver",   "~> 0.6"],
+    ["openssl",            "~> 2.1"]
   ].each do |g, v|
     spec.add_runtime_dependency g, v
   end

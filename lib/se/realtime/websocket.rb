@@ -4,6 +4,7 @@ require "websocket/driver"
 require "json"
 require "permessage_deflate"
 require "open-uri"
+require 'openssl'
 
 module SE
   module Realtime
@@ -15,7 +16,13 @@ module SE
         @uri = URI.parse(url)
         @url = "ws#{@uri.scheme.split("")[4]}://#{@uri.host}"
         @driver = WebSocket::Driver.client(self)
-        @socket = TCPSocket.new(@uri.host, @uri.scheme.split("")[4] == 's' ? 443 : 80)
+        if @uri.scheme.split("")[4] == 's'
+          @socket = TCPSocket.new(@uri.host, 443)
+          @socket = OpenSSL::SSL::SSLSocket.new(@socket)
+          @socket.connect
+        else
+          @socket = TCPSocket.new(@uri.host, 80)
+        end
         @handler = handler
         @logger = Logger.new "realtime.log"
         @restart = true
@@ -61,7 +68,7 @@ module SE
           end
           loop do
             begin
-              @driver.parse(@socket.recv(1))
+              @driver.parse(@socket.is_a?(TCPSocket) ? @socket.recv(1) : @socket.sysread(1))
             rescue IOError, SystemCallError => e
               @logger.warn "Recieved #{e} closing TCP socket. You shouldn't be worried :)"
             end
@@ -83,7 +90,7 @@ module SE
 
       def close
         @driver.close
-        @socket.shutdown
+        @socket.is_a?(TCPSocket) ? @socket.shutdown : @socket.sysclose
       rescue IOError, Errno::ENOTCONN => e
         @logger.error "Recieved #{e.class} trying to close websocket. Ignoring..."
       end
