@@ -14,8 +14,8 @@ module SE
 
       # If you're looking back it this, look at super_logger (ws_super_logger, panic switch logging) and logger (realtime, messages (and some warnings))
 
-      def initialize(url, cookies, &handler)
-        @super_logger = Logger.new('ws_super_logger.log')
+      def initialize(url, cookies, logs: false, &handler)
+        @super_logger = Logger.new(logs ? 'ws_super_logger.log' : '/dev/null')
 
         @uri = URI.parse(url)
         @url = "ws#{@uri.scheme.split("")[4]}://#{@uri.host}"
@@ -31,14 +31,14 @@ module SE
           @super_logger.info "Opened TCP socket for (port 80) #{@uri} (#{@socket})"
         end
         @handler = handler
-        @logger = Logger.new "realtime.log"
+        @logger = Logger.new(logs ? "realtime.log" : '/dev/null')
         @restart = true
         @super_logger.info "Set @restart to #{@restart}"
 
         @driver.add_extension PermessageDeflate
         @driver.set_header "Cookies", cookies if cookies
         @driver.set_header "Origin", "#{@uri.scheme}://#{@uri.host.split('.')[-2..-1].join('.')}"
-        
+
         @driver.on :connect, ->(_e) {}
 
         @driver.on :open, ->(_e) do
