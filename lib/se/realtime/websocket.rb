@@ -19,7 +19,7 @@ module SE
 
         @uri = URI.parse(url)
         @url = "ws#{@uri.scheme.split("")[4]}://#{@uri.host}"
-        @driver = WebSocket::Driver.client(self)
+
         if @uri.scheme.split("")[4] == 's'
           @socket = TCPSocket.new(@uri.host, 443)
           @super_logger.info "Opened TCP socket for (port 443) #{@uri} (#{@socket})"
@@ -30,11 +30,13 @@ module SE
           @socket = TCPSocket.new(@uri.host, 80)
           @super_logger.info "Opened TCP socket for (port 80) #{@uri} (#{@socket})"
         end
+
         @handler = handler
         @logger = Logger.new(logs ? "realtime.log" : '/dev/null')
         @restart = true
         @super_logger.info "Set @restart to #{@restart}"
 
+        @driver = WebSocket::Driver.client(self)
         @driver.add_extension PermessageDeflate
         @driver.set_header "Cookies", cookies if cookies
         @driver.set_header "Origin", "#{@uri.scheme}://#{@uri.host.split('.')[-2..-1].join('.')}"
@@ -71,20 +73,20 @@ module SE
 
         @driver.start
 
+        @dead = false
         @thread = Thread.new do
           trap("SIGINT") do
             @restart = false
+            @dead = true
             @super_logger.info "Got SIGINT. Dying."
             close
             Thread.exit
           end
-          loop do
-            begin
-              @driver.parse(@socket.is_a?(TCPSocket) ? @socket.recv(1) : @socket.sysread(1))
-            rescue IOError, SystemCallError => e
-              @super_logger.warn "Got some kind of interrupt in the thread. Panic."
-              @logger.warn "Recieved #{e} closing TCP socket. You shouldn't be worried :)"
-            end
+          begin
+            @driver.parse(@socket.is_a?(TCPSocket) ? @socket.recv(1) : @socket.sysread(1)) until @dead
+          rescue IOError, SystemCallError => e
+            @super_logger.warn "Got some kind of interrupt in the thread. Panic."
+            @logger.warn "Recieved #{e} closing TCP socket. You shouldn't be worried :)"
           end
           @super_logger.warn "Left TCPSocket.recv loop. If you're reading this, panic."
         end
@@ -104,6 +106,7 @@ module SE
 
       def close
         @super_logger.warn "Was told to close. Was sad."
+        @dead = true
         @driver.close
         @socket.is_a?(TCPSocket) ? @socket.shutdown : @socket.sysclose
       rescue IOError, Errno::ENOTCONN => e
